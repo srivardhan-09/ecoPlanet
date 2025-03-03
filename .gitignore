@@ -1,0 +1,63 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+logs/**/*.log
+debug.log
+*.out
+*.pid
+
+# Editor settings
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS & system files
+.DS_Store
+Thumbs.db
+
+# Build files
+dist/
+build/
+.cache/
+.out/
+
+# Temporary files
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+*.log
+
+# Coverage & testing
+coverage/
+*.lcov
+.nyc_output/
+jest/
+__snapshots__/
+
+# Cloud & Uploads
+uploads/
+public/uploads/
+public/images/
+
+# Docker & CI/CD
+docker-compose.override.yml
