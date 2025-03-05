@@ -10,7 +10,8 @@ import User from "./models/usermodel.js";
 import Mission from "./models/missions.js";
 import {uploadOnCloudinary} from "./utils/cloudinary.js";
 import {upload} from "./utils/multer.js"
-
+import Community from "./models/community.js";
+import Post from "./models/post.js"
 
 const app = express();
 app.use(express.json({ limit: "16kb" }));
@@ -167,22 +168,26 @@ app.post("/blog/create" , verifyJWT , upload.single("blogImage") , asyncHandler(
 ))
 
 // Fetch a single blog by blog ID
-// app.get("/blog/:blogId", verifyJWT , asyncHandler(async (req, res) => {
-//     try {
-//         const { blogId } = req.body;
-//         console.log(blogId);
+app.get("/blog/:blogId", verifyJWT , asyncHandler(async (req, res) => {
+    try {
+        const { blogId } = req.body;
+        console.log(blogId);
         
-//         const blog = await Blog.findById(blogId).populate("owner", "username email");
+        const blog = await Blog.findById(blogId).populate("owner", "username email");
 
-//         if (!blog) {
-//             return res.status(404).json({ message: "Blog not found 3we3" });
-//         }
+        blow.views+=1;
+        await blog.save();
 
-//         res.status(200).json(blog);
-//     } catch (error) {
-//         res.status(500).json({ message: error.message });
-//     }
-// }))
+
+        if (!blog) {
+            return res.status(404).json({ message: "Blog not found 3we3" });
+        }
+
+        res.status(200).json(blog);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}))
 
 // Fetch all blogs
 app.get("/blog/all" , asyncHandler(async (req, res) => {
@@ -193,6 +198,205 @@ app.get("/blog/all" , asyncHandler(async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 }))
+
+// import Community from "../models/Community.js";
+// import User from "../models/User.js";
+import mongoose from "mongoose";
+// import asyncHandler from "express-async-handler";
+
+// Get all communities //verifiedInPostMan
+app.get("/getCommunities/all",asyncHandler(async (req, res) => {
+    const communities = await Community.find().populate("createdBy", "username email");
+    res.status(200).json(communities);
+}))
+
+//Verified
+app.post("/createCommunity",verifyJWT, asyncHandler(async (req, res) => {
+    try {
+        const { name, description,theme } = req.body;
+        const createdBy = req.user._id; // Assuming the user ID is extracted from JWT
+
+        // Validate required fields
+        if (!name || !description) {
+            return res.status(400).json({ message: "Name and description are required" });
+        }
+
+        // Check if community with the same name exists
+        const existingCommunity = await Community.findOne({ name });
+        if (existingCommunity) {
+            return res.status(400).json({ message: "Community with this name already exists" });
+        }
+
+        // Create the community
+        const community = await Community.create({
+            name,
+            theme,
+            description,
+            createdBy,
+            members: [createdBy] // Add creator as first member
+        });
+
+        res.status(201).json({
+            message: "Community created successfully",
+            community
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}))
+
+
+// Get a community by ID //VErifiedPostMan
+app.get("/getCommunity/:id", asyncHandler(async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "Invalid community ID" });
+        }
+
+        // Fetch community and populate createdBy and posts
+        const community = await Community.findById(id)
+            .populate("createdBy", "username email")
+            .populate("posts");
+
+        if (!community) {
+            return res.status(404).json({ message: "Community not found" });
+        }
+
+        res.status(200).json({
+            ...community.toObject(),
+            memberCount: community.members.length,
+            posts: community.posts, // Include posts in the response
+        });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}));
+
+
+
+// Get communities the user has joined //verifiedInPostMan
+app.get("/getUserCommunities/:id",verifyJWT,asyncHandler(async (req, res) => {
+    try {
+        const { userId } = req.user._id;  // Extract userId from request parameters
+
+        // Fetch communities where the user is a member
+        const communities = await Community.find({ members: userId })
+            .populate("createdBy", "username email");
+
+        if (!communities || communities.length === 0) {
+            return res.status(404).json({ message: "No communities found for this user" });
+        }
+
+        res.status(200).json(communities);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}))
+
+
+
+// Join a Community
+app.post("/joinCommunity/:communityId",verifyJWT,asyncHandler(async (req, res) => {
+    const { communityId } = req.params;
+    const userId = req?.user._id; // Assuming user ID is extracted from JWT middleware
+
+    if (!mongoose.Types.ObjectId.isValid(communityId)) {
+        return res.status(400).json({ message: "Invalid community ID" });
+    }
+
+    const community = await Community.findById(communityId);
+    if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+    }
+
+    // Check if user is already a member
+    if (community.members.includes(userId)) {
+        return res.status(400).json({ message: "User is already a member of this community" });
+    }
+
+    // Add user to members array
+    community.members.push(userId);
+    await community.save();
+
+    res.status(200).json({ message: "Successfully joined the community", community });
+}))
+
+// Exit from a Community
+app.post("/exitCommunity/:communityId",verifyJWT,asyncHandler(async (req, res) => {
+    const { communityId } = req.params;
+    const userId = req.user.id; // Assuming user ID is extracted from JWT middleware
+
+    if (!mongoose.Types.ObjectId.isValid(communityId)) {
+        return res.status(400).json({ message: "Invalid community ID" });
+    }
+
+    const community = await Community.findById(communityId);
+    if (!community) {
+        return res.status(404).json({ message: "Community not found" });
+    }
+
+    // Check if user is a member
+    if (!community.members.includes(userId)) {
+        return res.status(400).json({ message: "User is not a member of this community" });
+    }
+
+    // Remove user from members array
+    community.members = community.members.filter(member => member.toString() !== userId);
+    await community.save();
+
+    res.status(200).json({ message: "Successfully exited the community", community });
+}))
+
+//ADD posts to community
+// import Post from "../models/Post.js"; // Ensure correct path to Post model
+
+app.post("/addPost/:communityId", verifyJWT, asyncHandler(async (req, res) => {
+    try {
+        const { communityId } = req.params;
+        const { title, description } = req.body;
+        const userId = req.user._id +""; // Extract user ID from JWT middleware
+        // console.log(title,description);
+
+
+        // Validate community ID
+        if (!mongoose.Types.ObjectId.isValid(communityId)) {
+            return res.status(400).json({ message: "Invalid community ID" });
+        }
+        // console.log(title,description);
+        // Find the community
+        const community = await Community.findById(communityId);
+        if (!community) {
+            return res.status(404).json({ message: "Community not found" });
+        }
+        // console.log(title,description);
+        // Create a new post
+        const newPost = new Post({
+            owner: userId,
+            title,
+            description,
+            image: "", // Optional field
+            likes: 0, // Default value
+        });
+        // console.log(title,description);
+        // Save the post
+        const savedPost = await newPost.save();
+
+        // Add post to the community's post list
+        community.posts.push(savedPost._id);
+        await community.save();
+        // console.log(title,description);
+        res.status(201).json({
+            message: "Post added successfully",
+            post: savedPost
+        });
+
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}));
 
 
 

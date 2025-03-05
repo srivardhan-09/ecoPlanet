@@ -32,7 +32,12 @@ const userSchema = new Schema(
             required : true,
             default : 0,
         },
-        points : {
+        totalPoints : {
+            type : Number,
+            required : true,
+            default : 0,
+        },
+        crntPoints : {
             type : Number,
             required : true,
             default : 0,
@@ -44,8 +49,11 @@ const userSchema = new Schema(
         },
         refreshToken : {
             type:String,
-        }
-
+        },
+        JoinedeCommunities:[{
+            type:Schema.Types.ObjectId,
+            ref:"Community",
+        }]
     },
     { timestamps: true } // Ensure timestamps are inside the Schema options
 );
