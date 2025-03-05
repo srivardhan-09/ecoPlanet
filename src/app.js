@@ -15,7 +15,7 @@ import {upload} from "./utils/multer.js"
 const app = express();
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ limit: "16kb", extended: true }));
-app.use(express.static("public"));
+// app.use(express.static("public"));
 app.use(cookieParser());
 
 const allowedOrigins = [process.env.CORS_ORIGIN, "http://localhost:5173", "http://localhost:8000"];
@@ -166,25 +166,7 @@ app.post("/blog/create" , verifyJWT , upload.single("blogImage") , asyncHandler(
     }
 ))
 
-// Fetch a single blog by blog ID
-// app.get("/blog/:blogId", verifyJWT , asyncHandler(async (req, res) => {
-//     try {
-//         const { blogId } = req.body;
-//         console.log(blogId);
-        
-//         const blog = await Blog.findById(blogId).populate("owner", "username email");
 
-//         if (!blog) {
-//             return res.status(404).json({ message: "Blog not found 3we3" });
-//         }
-
-//         res.status(200).json(blog);
-//     } catch (error) {
-//         res.status(500).json({ message: error.message });
-//     }
-// }))
-
-// Fetch all blogs
 app.get("/blog/all" , asyncHandler(async (req, res) => {
     try {
         const blogs = await Blog.find().populate("owner", "username email").sort({ createdAt: -1 });
@@ -193,6 +175,27 @@ app.get("/blog/all" , asyncHandler(async (req, res) => {
         res.status(500).json({ message: error.message });
     }
 }))
+
+// Fetch a single blog by blog ID
+app.get("/blog/:blogId", asyncHandler(async (req, res) => {
+    try {
+        const { blogId } = req.params;
+        console.log(`Fetching blog with ID: ${blogId}`);
+        
+        const blog = await Blog.findById(blogId).populate("owner", "username email");
+
+        if (!blog) {
+            return res.status(404).json({ message: "Blog not found" });
+        }
+
+        res.status(200).json(blog);
+    } catch (error) {
+        console.error(`Error fetching blog with ID: ${blogId}`, error);
+        res.status(500).json({ message: error.message });
+    }
+}));
+// Fetch all blogs
+
 
 
 
