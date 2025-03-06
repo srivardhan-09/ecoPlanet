@@ -12,7 +12,7 @@ import {uploadOnCloudinary} from "./utils/cloudinary.js";
 import {upload} from "./utils/multer.js"
 import Community from "./models/community.js";
 import Post from "./models/post.js"
-
+// import Mission from "./models/missions.js";
 const app = express();
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ limit: "16kb", extended: true }));
@@ -399,5 +399,96 @@ app.post("/addPost/:communityId", verifyJWT, asyncHandler(async (req, res) => {
 }));
 
 
+app.post("/createMission",asyncHandler(async (req, res) => {
+        try {
+            const { title, description, points, coins, date } = req.body;
+            
+            if (!title || !description || !date) {
+                return res.status(400).json({ message: "Title, description, and date are required" });
+            }
+            
+            const parsedDate = new Date(date);
+            if (isNaN(parsedDate.getTime())) {
+                return res.status(400).json({ message: "Invalid date format" });
+            }
+            
+            const newMission = await Mission.create({ title, description, points, coins, date: parsedDate });
+            res.status(201).json({ message: "Mission created successfully", newMission });
+        } catch (error) {
+            res.status(500).json({ message: error.message });
+        }
+    }));
+
+app.get( "/getMissionsByDate", asyncHandler(async (req, res) => {
+    try {
+        const { date } = req.query;
+        
+        if (!date) {
+            return res.status(400).json({ message: "Date parameter is required" });
+        }
+        
+        const parsedDate = new Date(date);
+        if (isNaN(parsedDate.getTime())) {
+            return res.status(400).json({ message: "Invalid date format" });
+        }
+        
+        const missions = await Mission.find({ date: parsedDate });
+        res.status(200).json(missions);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}))
+
+app.post("/completemission",verifyJWT,asyncHandler(async (req, res) => {
+    try {
+        const { missionId, userId } = req.body;
+        const mission = await Mission.findById(missionId);
+        const user = await User.findById(userId);
+        
+        
+        if (!mission || !user) {
+            return res.status(404).json({ message: "Mission or User not found" });
+        }
+        
+        if (mission.completedPeople.includes(userId)) {
+            return res.status(400).json({ message: "User already completed this mission" });
+        }
+       
+        
+        mission.completedPeople.push(userId);
+        user.totalPoints += mission.points;
+        user.crntPoints += mission.points;
+        user.coins += mission.coins;
+        
+        const updatedMission = await Mission.findByIdAndUpdate(
+            missionId, 
+            { $push: { completedPeople: userId } }, 
+            { new: true, useFindAndModify: false }
+          );
+        // await mission.save();
+        await user.save();
+        console.log(1);
+        
+        res.status(200).json({ message: "Mission completed successfully", mission, user });
+    } catch (error) {
+        res.status(500).json({ message: error.message +"478" });
+    }
+}))
+
+app.get("/isMissionCompletedByUser/:missionId/:userID" ,asyncHandler(async (req, res) => {
+    try {
+        const { missionId, userId } = req.params;
+        const mission = await Mission.findById(missionId);
+        
+        if (!mission) {
+            return res.status(404).json({ message: "Mission not found" });
+        }
+        
+        const isCompleted = mission.completedPeople.includes(userId);
+        res.status(200).json({ completed: isCompleted });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+}))
 
 export  { app };

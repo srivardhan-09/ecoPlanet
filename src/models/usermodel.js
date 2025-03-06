@@ -23,10 +23,10 @@ const userSchema = new Schema(
             type: String,
             required: [true, "Password is required"], // Custom error message
         },
-        missions : [{
-            type : Schema.Types.ObjectId,
-            ref : "Mission",
-        }],
+        // missions : [{
+        //     type : Schema.Types.ObjectId,
+        //     ref : "Mission",
+        // }],
         level : {
             type : Number,
             required : true,
