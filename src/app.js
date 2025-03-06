@@ -16,10 +16,10 @@ import Post from "./models/post.js"
 const app = express();
 app.use(express.json({ limit: "16kb" }));
 app.use(express.urlencoded({ limit: "16kb", extended: true }));
-app.use(express.static("public"));
+// app.use(express.static("public"));
 app.use(cookieParser());
 
-const allowedOrigins = [process.env.CORS_ORIGIN, "http://localhost:5173", "http://localhost:8000"];
+const allowedOrigins = [process.env.CORS_ORIGIN, "http://localhost:5173", "http://localhost:8000","http://localhost:5174"];
 
 app.use(cors({
     origin: allowedOrigins,
@@ -167,15 +167,27 @@ app.post("/blog/create" , verifyJWT , upload.single("blogImage") , asyncHandler(
     }
 ))
 
-// Fetch a single blog by blog ID
-app.get("/blog/:blogId", verifyJWT , asyncHandler(async (req, res) => {
+
+
+// Fetch all blogs
+app.get("/blog/all" , asyncHandler(async (req, res) => {
     try {
-        const { blogId } = req.body;
+        const blogs = await Blog.find().populate("owner", "username email").sort({ createdAt: -1 });
+        res.status(200).json(blogs);
+    } catch (error) {
+        res.status(500).json({ message: error.message});
+    }
+}))
+
+// Fetch a single blog by blog ID
+app.get("/blog/:blogId" , asyncHandler(async (req, res) => {
+    try {
+        const { blogId } = req.params;
         console.log(blogId);
         
         const blog = await Blog.findById(blogId).populate("owner", "username email");
 
-        blow.views+=1;
+        blog.views+=1;
         await blog.save();
 
 
@@ -184,16 +196,6 @@ app.get("/blog/:blogId", verifyJWT , asyncHandler(async (req, res) => {
         }
 
         res.status(200).json(blog);
-    } catch (error) {
-        res.status(500).json({ message: error.message });
-    }
-}))
-
-// Fetch all blogs
-app.get("/blog/all" , asyncHandler(async (req, res) => {
-    try {
-        const blogs = await Blog.find().populate("owner", "username email").sort({ createdAt: -1 });
-        res.status(200).json(blogs);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
